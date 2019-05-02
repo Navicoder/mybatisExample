@@ -1,0 +1,239 @@
+1
+先加载config.xml 再加载mapper.xml 
+
+关键类
+	BaseBuilder(Configuration) XMLConfigBuilder ,XPathParser(Document)
+	XMLConfigBuilder.parse(—)读取configuration元素下的元素
+	其中有个mappers的，在解析其子元素【package| resource】时交给XmlMapperbuilder读取
+	在XmlMapperbuilder.parse()时,读取《mapper》下的节点。
+	对于resultmap sql片段处理后（放在map中？）      buildStatementFromContext(context.evalNodes("select|insert|update|delete"));对sql完成构建
+	这里边交个XMLStatementBuilder.parseStatementNode();完成的。主要有SqlSource完成的。又有XMLScriptBuilder完成的。解析完成List<SqlNode> 
+	这里有IFsqlNode ForeachSqlNode 等。
+	
+	
+	
+	
+	
+在接口请求时
+		根据id 从Configuration类的属性Map<String, MappedStatement> mappedStatements中获,然后对预编译时的参数赋值，组成sql 完成访问
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+SqlSessionFactoryBuilder sqlSessionFactoryBuilder = new SqlSessionFactoryBuilder();
+sessionFactory = sqlSessionFactoryBuilder.build(Resources.getResourceAsReader(resource));
+
+	1 读取配置文件
+  
+  SqlSessionFactoryBuilder.java
+    public SqlSessionFactory build(Reader reader, String environment, Properties properties) {
+		//1.1 将配置文件加载xMLConfigBuilder中
+      XMLConfigBuilder xMLConfigBuilder = new XMLConfigBuilder(reader, environment, properties);
+	  
+	  //1.2获取xMLConfigBuilder中也就是xPathParser[配置文件]中的configuration下的各个配置文件的属性
+	  Configuration configuration = xMLConfigBuilder.parse()
+	  //1.3
+      return build(configuration);
+	}
+	
+		
+ XMLConfigBuilder.java
+//1.1.1 构建XMLMapperBuilder实例.把1.1.1.1产生的XPathParser实例作为XMLConfigBuilder的属性，后续用XPathParser来解析
+	public XMLMapperBuilder(InputStream inputStream, Configuration configuration, String resource, Map<String, XNode> sqlFragments) {
+		//1.1.1.1 实例化xPathParser对象
+		XPathParser xPathParser = new XPathParser(inputStream, true, configuration.getVariables(), new XMLMapperEntityResolver());
+		//1.1.1.2 实例化Congiguration对象,然后赋值给XMLMapperBuilder对象，完成XMLMapperBuilder对象的实例化
+		this(xPathParser, configuration, resource,  sqlFragments);
+				
+//1.1.1.1 构建XPathParser实例
+XPathParser.java
+//=============================================================================================================================
+  private Document document;
+  private boolean validation;
+  private EntityResolver entityResolver;
+  private Properties variables;
+  private XPath xpath;
+//=============================================================================================================================
+
+
+  public XPathParser(Reader reader, boolean validation, Properties variables, EntityResolver entityResolver) {
+	//1.1.1.1.1 构建XPathParser实例中除了document的属性
+    commonConstructor(validation, variables, entityResolver);
+	//1.1.1.1.2 构建XPathParser实例中document的属性
+    this.document = createDocument(new InputSource(reader));
+	//内部 构建document实例
+	....
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder documentBuilder = factory.newDocumentBuilder();
+		Document document = documentBuilder.parse(inputSource);
+		return document;
+	
+  }
+  //1.1.1.1 至此 将配置文件中的元素解析到了document中，也就是XPathParser，也就是XMLConfigBuilder中
+  
+  
+//1.1.1.2 实例化Congiguration对象;-A 实例化Congiguration对象 -B 然后将congiguration对象以及其他属性赋值给XMLConfigBuilder。
+//==================================================================================================================================================================
+public abstract class BaseBuilder {
+  protected final Configuration configuration;
+  protected final TypeAliasRegistry typeAliasRegistry;
+  protected final TypeHandlerRegistry typeHandlerRegistry;
+}
+public class XMLConfigBuilder extends BaseBuilder {
+  private boolean parsed;
+  private XPathParser parser;
+  private String environment;
+  private ReflectorFactory localReflectorFactory = new DefaultReflectorFactory();
+}  
+//================================================================================================================================================================
+	
+  private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
+    super(new Configuration());//1.1.1.2 A实例化Congiguration对象,将congiguration对象赋值给XMLConfigBuilder
+	
+	//1.1.1.2 -B 其他属性赋值给XMLConfigBuilder。
+    ErrorContext.instance().resource("SQL Mapper Configuration");
+    this.configuration.setVariables(props);
+    this.parsed = false;
+    this.environment = environment;
+    this.parser = parser;
+  }
+  
+//1.1.1.2 至此 configuration实例就被赋值XMLConfigBuilder实例中【父类中的属性】
+  
+  
+//1.2 将配置文件中的configuration节点下的属性加载到Configuration
+  public Configuration parse() {
+    if (parsed) {
+      throw new BuilderException("Each XMLConfigBuilder can only be used once.");
+    }
+    parsed = true;
+    parseConfiguration(parser.evalNode("/configuration"));
+    return configuration;
+  }
+
+XMLStatementBuilder xmlStatementBuilder = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
+XMLStatementBuilder xmlStatementBuilder = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
+
+  //1.2.1 
+  private void parseConfiguration(XNode root) {
+    try {
+      propertiesElement(root.evalNode("properties"));
+      Properties settings = settingsAsProperties(root.evalNode("settings"));
+      loadCustomVfs(settings);
+      typeAliasesElement(root.evalNode("typeAliases"));
+      pluginElement(root.evalNode("plugins"));
+      objectFactoryElement(root.evalNode("objectFactory"));
+      objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+      reflectorFactoryElement(root.evalNode("reflectorFactory"));
+      settingsElement(settings);
+      environmentsElement(root.evalNode("environments"));
+      databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+      typeHandlerElement(root.evalNode("typeHandlers"));
+	  //1.2.1.1 config文件中的mappers元素，
+      mapperElement(root.evalNode("mappers"));
+    } catch (Exception e) {
+      throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
+    }
+  }
+  //1.2.1.1 config文件中的mappers元素，
+  XMLConfigBuilder.java
+ private void mapperElement(XNode parent) throws Exception {
+    if (parent != null) {
+      for (XNode child : parent.getChildren()) {
+        if ("package".equals(child.getName())) {
+          String mapperPackage = child.getStringAttribute("name");
+          configuration.addMappers(mapperPackage);
+        } else {
+          String resource = child.getStringAttribute("resource");
+          String url = child.getStringAttribute("url");
+          String mapperClass = child.getStringAttribute("class");
+          if (resource != null && url == null && mapperClass == null) {
+            ErrorContext.instance().resource(resource);
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+			//1.2.1.2 config文件中的mappers元素，     XMLMapperBuilder 继承于BaseBuilder
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+			//1.2.1.3 XMLMapperBuilder执行具体的解析         
+		   mapperParser.parse();
+          } else if (resource == null && url != null && mapperClass == null) {
+            ErrorContext.instance().resource(url);
+            InputStream inputStream = Resources.getUrlAsStream(url);
+            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
+            mapperParser.parse();
+          } else if (resource == null && url == null && mapperClass != null) {
+            Class<?> mapperInterface = Resources.classForName(mapperClass);
+            configuration.addMapper(mapperInterface);
+          } else {
+            throw new BuilderException("A mapper element may only specify a url, resource or class, but not more than one.");
+          }
+        }
+      }
+    }
+	//1.2.1.3 XMLMapperBuilder执行具体的解析
+	XMLMapperBuilder.java
+public void parse() {
+    if (!configuration.isResourceLoaded(resource)) {
+      configurationElement(parser.evalNode("/mapper"));//1.2.1.3.1
+      configuration.addLoadedResource(resource);
+      bindMapperForNamespace();
+    }
+
+    parsePendingResultMaps();
+    parsePendingChacheRefs();
+    parsePendingStatements();
+  }
+  
+  //1.2.1.3.1 主要是读取select|insert|update|delete等节点
+  XMLMapperBuilder.java
+  private void configurationElement(XNode context) {
+    try {
+      String namespace = context.getStringAttribute("namespace");
+      if (namespace == null || namespace.equals("")) {
+        throw new BuilderException("Mapper's namespace cannot be empty");
+      }
+      builderAssistant.setCurrentNamespace(namespace);
+      cacheRefElement(context.evalNode("cache-ref"));
+      cacheElement(context.evalNode("cache"));
+      parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+      resultMapElements(context.evalNodes("/mapper/resultMap"));
+      sqlElement(context.evalNodes("/mapper/sql"));
+      buildStatementFromContext(context.evalNodes("select|insert|update|delete"));//至此，就读取到了每个sql接口，后续再继续 这一波先到这
+    } catch (Exception e) {
+      throw new BuilderException("Error parsing Mapper XML. Cause: " + e, e);
+    }
+  }
+  
+  
+  //至此，将配置文件中的所有属性都读取到Configuration对象中
+ 
+  
+ //1.3 将Configuration对象传给DefaultSqlSessionFactory对象
+ 
+ //=======================================
+ public class DefaultSqlSessionFactory implements SqlSessionFactory {
+
+  private final Configuration configuration;
+  
+  ....
+  
+  }
+//=========================================
+
+ public SqlSessionFactory build(Configuration config) {
+    return new DefaultSqlSessionFactory(config);
+  }
+  public DefaultSqlSessionFactory(Configuration configuration) {
+    this.configuration = configuration;
+  }
+  
+  在opensession等一系列方法中 都使用了属性configuration
+  
+  
+  

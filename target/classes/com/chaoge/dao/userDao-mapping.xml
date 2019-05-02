@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chaoge.dao.UserDao">
+
+    <select id="findUserById" resultType="com.chaoge.entity.User" >
+      select * from user where id = #{id}
+   </select>
+    <select id="findUserByName" parameterType="java.lang.String" resultType="com.chaoge.entity.User" >
+      select * from user where 1=1
+
+        <!-- 注意看，是在if test=验证的时候发生的 There is no getter for property named 'name' in 'class java.lang.String'，而并非是and name = #{name} 的时候发生的错误-->
+<!--        <if test="name != null">
+            and name = #{name}
+        </if> -->
+
+        <!-- 用_parameter 代替字符串的入参，-->
+        <if test="_parameter != null">
+            and name = #{name}
+        </if>
+        <!-- 或者在dao接口中指定。public List<User> findUserByName(@Param("name") String userId) -->
+<!--        <if test="name != null">
+            and name = #{name}
+        </if>-->
+   </select>
+
+    <!-- =================================  #{item}================================= -->
+
+    <select id="getByIdList" parameterType="java.lang.Integer" resultType="com.chaoge.entity.User" >
+      select * from user where 1=1
+      <if test="list !=null">
+          and id in
+          <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+              #{item}
+          </foreach>
+      </if>
+   </select>
+    <select id="getByNameList" parameterType="java.lang.String" resultType="com.chaoge.entity.User" >
+      select * from user where 1=1
+        <if test="list !=null">
+            and name in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+   </select>
+    <select id="getByMap" parameterType="Map" resultType="com.chaoge.entity.User" >
+      select * from user where 1=1
+        <if test="ids !=null">
+            and name in
+            <foreach collection="ids" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="names !=null">
+            and id in
+            <foreach collection="names" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+   </select>
+
+    <!-- =================================  ${item}================================= -->
+
+    <select id="getByIdList2" parameterType="java.lang.Integer" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="list !=null">
+            and id in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                ${item}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByNameList2" parameterType="java.lang.String" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="list !=null">
+            and name in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                ${item}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByMap2" parameterType="Map" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="ids !=null">
+            and name in
+            <foreach collection="ids" index="index" item="item" open="(" separator="," close=")">
+                ${item}
+            </foreach>
+        </if>
+        <if test="names !=null">
+            and id in
+            <foreach collection="names" index="index" item="item" open="(" separator="," close=")">
+                ${item}
+            </foreach>
+        </if>
+    </select>
+
+    <!-- =================================  #{devIdList[${index}]}================================= -->
+    <select id="getByIdList3" parameterType="java.lang.Integer" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="list !=null">
+            and id in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{list[${index}]}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByNameList3" parameterType="java.lang.String" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="list !=null">
+            and name in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{list[${index}]}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByMap3" parameterType="Map" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="ids !=null">
+            and name in
+            <foreach collection="ids" index="index" item="item" open="(" separator="," close=")">
+                #{ids[${index}]}
+            </foreach>
+        </if>
+        <if test="names !=null">
+            and id in
+            <foreach collection="names" index="index" item="item" open="(" separator="," close=")">
+                #{names[${index}]}
+            </foreach>
+        </if>
+    </select>
+
+
+
+    <!-- ================================= user.map #{item} #{item} #{devIdList[${index}]}================================= -->
+
+    <select id="getByUser1" parameterType="java.lang.Integer" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="name != null">
+            and name = #{name}
+        </if>
+        <if test="paramMap.ids !=null">
+            and id in
+            <foreach collection="paramMap.ids" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="paramMap.names !=null">
+            and name in
+            <foreach collection="paramMap.names" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByUser2" parameterType="java.lang.String" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="name != null">
+            and name = #{name}
+        </if>
+        <if test="paramMap.ids !=null">
+            and name in
+            <foreach collection="paramMap.ids" index="index" item="item" open="(" separator="," close=")">
+                ${item}
+            </foreach>
+        </if>
+        <if test="paramMap.names !=null">
+            and name in
+            <foreach collection="paramMap.names" index="index" item="item" open="(" separator="," close=")">
+               ${item}
+            </foreach>
+        </if>
+    </select>
+    <select id="getByUser3" parameterType="com.chaoge.entity.User" resultType="com.chaoge.entity.User" >
+        select * from user where 1=1
+        <if test="name != null">
+            and name = #{name}
+        </if>
+        <if test="paramMap.ids !=null">
+            and id in
+            <foreach collection="paramMap.ids" index="index" item="item" open="(" separator="," close=")">
+                #{paramMap.ids[${index}]}
+            </foreach>
+        </if>
+        <if test="paramMap.names !=null">
+            and name in
+            <foreach collection="paramMap.names" index="index" item="item" open="(" separator="," close=")">
+                #{paramMap.names[${index}]}
+            </foreach>
+        </if>
+    </select>
+</mapper>
